@@ -82,5 +82,5 @@
 - FIREBASE_SETUP.md: Firebase 설정 가이드
 
 ---
-
+**에이아이 토큰 문제로 인해 현재 AI 사용 불가. 몇가지 실험을 보고 싶다면 project.md를 참고하세요.**
 **자세한 구현 내용은 [project.md](project.md)를 참고하세요.**
