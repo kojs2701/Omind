@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O:mind - AI 오답 복습 시스템</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Firebase SDK (compat: script-new.js 네임스페이스 방식과 호환) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <!-- 로그인 화면 -->
+    <div id="authContainer" class="auth-container active">
+        <div class="auth-form-wrapper">
+            <div class="auth-header">
+                <h1>🎓 O:mind</h1>
+                <p>AI 기반 오답 복습 시스템</p>
+            </div>
+
+            <div id="loginForm" class="auth-form">
+                <h2>로그인</h2>
+                <div class="form-group">
+                    <label>이메일</label>
+                    <input type="email" id="loginEmail" placeholder="your@email.com" class="auth-input">
+                </div>
+                <div class="form-group">
+                    <label>비밀번호</label>
+                    <input type="password" id="loginPassword" placeholder="비밀번호" class="auth-input">
+                </div>
+                <button class="auth-btn" id="loginBtnMain" onclick="handleLogin()">로그인</button>
+                <p id="firebaseInitStatus" class="firebase-init-status hidden">🔄 Firebase 초기화 중...</p>
+                <p class="auth-switch">계정이 없으신가요? <button class="link-btn" onclick="switchToSignup()">가입하기</button></p>
+                <div id="loginError" class="auth-error hidden"></div>
+            </div>
+
+            <div id="signupForm" class="auth-form hidden">
+                <h2>회원가입</h2>
+                <div class="form-group">
+                    <label>이메일</label>
+                    <input type="email" id="signupEmail" placeholder="your@email.com" class="auth-input">
+                </div>
+                <div class="form-group">
+                    <label>비밀번호</label>
+                    <input type="password" id="signupPassword" placeholder="6자 이상" class="auth-input">
+                </div>
+                <div class="form-group">
+                    <label>비밀번호 확인</label>
+                    <input type="password" id="signupPasswordConfirm" placeholder="비밀번호 확인" class="auth-input">
+                </div>
+                <div class="form-group">
+                    <label>사용자명</label>
+                    <input type="text" id="signupUsername" placeholder="사용자명" class="auth-input">
+                </div>
+                <button class="auth-btn" id="signupBtnMain" onclick="handleSignup()">가입하기</button>
+                <p class="auth-switch">이미 계정이 있으신가요? <button class="link-btn" onclick="switchToLogin()">로그인하기</button></p>
+                <div id="signupError" class="auth-error hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="app" class="app-container hidden">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-container">
+                <div class="logo">
+                    <h1>O:mind</h1>
+                    <p class="tagline">AI가 함께하는 스마트한 복습</p>
+                </div>
+                <div class="current-page" id="currentPage">메인</div>
+                <nav class="nav-buttons">
+                    <button class="nav-btn" onclick="navigateTo('main')">홈</button>
+                    <button class="nav-btn" onclick="navigateTo('wrong')">오답노트</button>
+                    <button class="nav-btn" onclick="navigateTo('problems')">문제</button>
+                    <button class="nav-btn" onclick="navigateTo('learning')">학습 추천</button>
+                    <button class="nav-btn" onclick="navigateTo('submit')">문제 전송</button>
+                    <button class="nav-btn" onclick="navigateTo('scores')">점수 기록</button>
+                </nav>
+                <div class="user-info">
+                    <span id="userNameDisplay" class="user-name"></span>
+                    <button id="logoutBtn" class="logout-btn" onclick="handleLogout()" style="display: none;">로그아웃</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- 1. 메인 페이지 -->
+            <section id="main-page" class="page active">
+                <div class="hero-section">
+                    <h2>O:mind에 오신 것을 환영합니다!</h2>
+                    <p class="intro-text">AI 기반 오답 분석으로 효율적인 복습을 시작하세요.</p>
+                </div>
+
+                <div class="features-grid">
+                    <div class="feature-card" onclick="navigateTo('wrong')">
+                        <h3>📝 오답노트</h3>
+                        <p>틀린 문제들을 한눈에 보고 AI 분석을 확인하세요</p>
+                    </div>
+                    <div class="feature-card" onclick="navigateTo('problems')">
+                        <h3>🎯 문제 풀기</h3>
+                        <p>당신의 수준에 맞는 맞춤형 문제를 풀어보세요</p>
+                    </div>
+                    <div class="feature-card" onclick="navigateTo('learning')">
+                        <h3>📊 학습 추천</h3>
+                        <p>망각 곡선 기반 개인맞춤 복습 계획을 받으세요</p>
+                    </div>
+                    <div class="feature-card" onclick="navigateTo('submit')">
+                        <h3>⬆️ 문제 제출</h3>
+                        <p>틀린 문제를 업로드하고 AI 설명을 받으세요</p>
+                    </div>
+                    <div class="feature-card" onclick="navigateTo('scores')">
+                        <h3>📈 성적 관리</h3>
+                        <p>시험 성적을 기록하고 시각화하세요</p>
+                    </div>
+                </div>
+
+                <div class="intro-content">
+                    <h3>O:mind의 특징</h3>
+                    <ul>
+                        <li><strong>AI 오답 분석:</strong> 실수의 원인을 정확히 파악합니다</li>
+                        <li><strong>수준별 해설:</strong> 학생 수준에 맞는 상세한 설명을 제공합니다</li>
+                        <li><strong>맞춤형 문제:</strong> 약점 주제의 유형별 문제를 자동 생성합니다</li>
+                        <li><strong>스마트 복습:</strong> 망각 곡선 기반 최적의 복습 시간표를 추천합니다</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- 2. 오답노트 페이지 -->
+            <section id="wrong-page" class="page">
+                <div class="page-header">
+                    <h2>📝 오답노트</h2>
+                    <p>지금까지 틀린 문제들을 모았습니다</p>
+                </div>
+
+                <div class="wrong-answers-container">
+                    <div id="wrongAnswersList" class="wrong-answers-list">
+                        <p class="empty-message">오답 기록이 없습니다. 문제를 풀고 오답을 등록해주세요.</p>
+                    </div>
+                </div>
+
+                <div id="wrongAnswerDetail" class="wrong-answer-detail hidden">
+                    <h3>오답 상세 분석</h3>
+                    <div class="detail-content">
+                        <div class="detail-left">
+                            <h4>📚 문제</h4>
+                            <div id="detailProblem" class="detail-item"></div>
+                            <h4>✍️ 내 답변</h4>
+                            <div id="detailUserAnswer" class="detail-item"></div>
+                            <h4>✅ 정답</h4>
+                            <div id="detailCorrectAnswer" class="detail-item"></div>
+                        </div>
+                        <div class="detail-right">
+                            <h4>🤖 AI 분석</h4>
+                            <div id="detailAnalysis" class="detail-item analysis"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. 문제 페이지 -->
+            <section id="problems-page" class="page">
+                <div class="page-header">
+                    <h2>🎯 만든 문제들</h2>
+                    <p>생성된 문제를 풀어보세요</p>
+                </div>
+
+                <div class="problems-filter">
+                    <select id="difficultyFilter" class="filter-select">
+                        <option value="all">전체 난이도</option>
+                        <option value="하">하</option>
+                        <option value="중">중</option>
+                        <option value="상">상</option>
+                    </select>
+                    <select id="topicFilter" class="filter-select">
+                        <option value="all">전체 주제</option>
+                    </select>
+                </div>
+
+                <div id="problemsList" class="problems-list">
+                    <p class="empty-message">문제가 없습니다. 문제를 생성해주세요.</p>
+                </div>
+
+                <div id="problemDetail" class="problem-detail hidden">
+                    <h3 id="problemTitle"></h3>
+                    <div class="problem-content">
+                        <div id="problem" class="problem-text"></div>
+                        <div id="optionsContainer" class="options-container"></div>
+                        <div id="resultContainer" class="result-container hidden">
+                            <p id="resultMessage"></p>
+                            <p id="resultExplanation"></p>
+                        </div>
+                        <button id="submitAnswerBtn" class="submit-btn" onclick="submitAnswer()">답 제출</button>
+                        <button id="nextProblemBtn" class="next-btn hidden" onclick="nextProblem()">다음 문제</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. 학습 추천 페이지 -->
+            <section id="learning-page" class="page">
+                <div class="page-header">
+                    <h2>📊 학습 추천</h2>
+                    <p>맞춤형 학습 계획을 확인하세요</p>
+                </div>
+
+                <div class="learning-content">
+                    <div class="learning-section">
+                        <h3>약점 분석</h3>
+                        <div id="weakPoints" class="points-list">
+                            <p class="empty-message">약점이 분석되지 않았습니다.</p>
+                        </div>
+                    </div>
+
+                    <div class="learning-section">
+                        <h3>복습 일정 (망각 곡선)</h3>
+                        <div id="reviewSchedule" class="schedule-list">
+                            <p class="empty-message">복습 일정이 없습니다.</p>
+                        </div>
+                    </div>
+
+                    <div class="learning-section">
+                        <h3>추천 학습법</h3>
+                        <div id="studyMethods" class="methods-list">
+                            <p class="empty-message">학습법 추천이 없습니다.</p>
+                        </div>
+                    </div>
+
+                    <div class="learning-section">
+                        <h3>목표 점수</h3>
+                        <div id="targetScore" class="target-score">
+                            <p class="empty-message">목표가 설정되지 않았습니다.</p>
+                        </div>
+                    </div>
+
+                    <div class="learning-section">
+                        <h3>복습 일정 시각화</h3>
+                        <div class="learning-visuals">
+                            <div class="learning-chart-wrap">
+                                <canvas id="learningProgressChart" width="900" height="260" class="chart-hidden"></canvas>
+                            </div>
+                            <div class="learning-table-wrap">
+                                <div class="scores-table-scroll">
+                                    <table class="scores-history-table">
+                                        <thead>
+                                            <tr>
+                                                <th>회차</th>
+                                                <th>복습 날짜</th>
+                                                <th>예상 기억률</th>
+                                                <th>실행 항목</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="reviewScheduleBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="generate-plan-btn" onclick="generateLearningPlan()">학습 계획 생성</button>
+                </div>
+            </section>
+
+            <!-- 5. 문제 전송 페이지 -->
+            <section id="submit-page" class="page">
+                <div class="page-header">
+                    <h2>⬆️ 문제 전송</h2>
+                    <p>틀린 문제를 업로드하고 AI 설명을 받으세요</p>
+                </div>
+
+                <div class="submit-form">
+                    <!-- 이미지 업로드 영역 -->
+                    <div class="image-section">
+                        <h3>📸 문제 이미지</h3>
+                        <div class="image-upload-container">
+                            <div class="image-upload-area" id="imageUploadArea">
+                                <input type="file" id="problemImageFile" accept="image/*" onchange="handleImageUpload(event)" class="hidden-file-input">
+                                <div id="uploadPlaceholder" class="upload-placeholder" onclick="document.getElementById('problemImageFile').click()">
+                                    <p>📷 이미지를 선택하세요</p>
+                                    <p class="upload-hint">또는 클릭하여 파일 선택</p>
+                                </div>
+                                <div id="imagePreview" class="image-preview hidden">
+                                    <img id="previewImage" src="" alt="미리보기">
+                                    <button type="button" class="remove-btn" onclick="removeImage()">✕ 제거</button>
+                                </div>
+                            </div>
+                            <p class="supported-formats">지원 형식: JPG, PNG, GIF, WEBP (최대 20MB)</p>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>또는 문제 텍스트 입력</label>
+                            <textarea id="problemImage" placeholder="문제 내용을 입력하거나 이미지를 업로드하세요" class="form-textarea"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 문제 설명 영역 -->
+                    <div class="description-section">
+                        <h3>📝 추가 설명</h3>
+                        <div class="form-group">
+                            <label>문제에 대한 추가 설명 (선택사항)</label>
+                            <textarea id="problemDescription" placeholder="문제의 맥락이나 추가 정보를 작성해주세요. (예: 우리가 배운 단원은...)" class="form-textarea"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 답변 정보 영역 -->
+                    <div class="answer-section">
+                        <h3>✍️ 답변 정보</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>내 답변</label>
+                                <input type="text" id="userAnswer" placeholder="당신의 답변" class="form-input">
+                            </div>
+
+                            <div class="form-group">
+                                <label>정답</label>
+                                <input type="text" id="correctAnswerInput" placeholder="정답" class="form-input">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 학습 정보 영역 -->
+                    <div class="learning-info-section">
+                        <h3>🎓 학습 정보</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>학생 수준</label>
+                                <select id="studentLevel" class="form-input">
+                                    <option value="초등">초등학교</option>
+                                    <option value="중등" selected>중학교</option>
+                                    <option value="고등">고등학교</option>
+                                    <option value="대학">대학</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>과목</label>
+                                <select id="subject" class="form-input">
+                                    <option value="수학">수학</option>
+                                    <option value="English">영어</option>
+                                    <option value="과학">과학</option>
+                                    <option value="국어">국어</option>
+                                    <option value="사회">사회</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 옵션 영역 -->
+                    <div class="options-section">
+                        <h3>⚙️ 추가 옵션</h3>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="generateProblems" checked> 비슷한 문제 생성
+                                <span class="checkbox-desc">학습을 위한 유사 문제를 자동 생성합니다</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="generatePlan" checked> 학습 계획 생성
+                                <span class="checkbox-desc">망각 곡선 기반 복습 일정을 생성합니다</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button class="submit-problem-btn" onclick="submitProblem()">🚀 분석 요청</button>
+                    <div id="submitResult" class="submit-result hidden"></div>
+                </div>
+            </section>
+
+            <!-- 6. 점수 기록 페이지 -->
+            <section id="scores-page" class="page">
+                <div class="page-header">
+                    <h2>📈 점수 기록</h2>
+                    <p>성적을 관리하고 진진을 추적하세요</p>
+                </div>
+
+                <div class="score-input-section">
+                    <h3>새 점수 기록</h3>
+                    <div class="score-form">
+                        <input type="text" id="testName" placeholder="시험명 (예: 중간고사)" class="form-input">
+                        <input type="number" id="testScore" placeholder="점수" class="form-input" min="0" max="100">
+                        <input type="number" id="totalScore" placeholder="만점" class="form-input" min="1" value="100">
+                        <input type="date" id="testDate" class="form-input">
+                        <select id="testSubject" class="form-input">
+                            <option value="수학">수학</option>
+                            <option value="English">영어</option>
+                            <option value="과학">과학</option>
+                            <option value="국어">국어</option>
+                            <option value="사회">사회</option>
+                        </select>
+                        <button class="add-score-btn" onclick="addScore()">기록하기</button>
+                    </div>
+                </div>
+
+                <div class="score-display-section">
+                    <h3>성적 현황</h3>
+                    <div id="scoreSummaryCards" class="score-summary-cards hidden"></div>
+                    <div id="scoreGrowthInsights" class="score-growth-insights hidden"></div>
+                    <div class="scores-chart-wrap">
+                        <canvas id="scoresChart" width="900" height="280" class="chart-hidden"></canvas>
+                    </div>
+                    <div id="scoresList" class="scores-list">
+                        <p class="empty-message">기록된 점수가 없습니다.</p>
+                    </div>
+                    <div class="scores-history-wrap">
+                        <h4>기록 이력</h4>
+                        <div class="scores-table-scroll">
+                            <table class="scores-history-table">
+                                <thead>
+                                    <tr>
+                                        <th>시험명</th>
+                                        <th>과목</th>
+                                        <th>점수</th>
+                                        <th>백분율</th>
+                                        <th>날짜</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="scoresHistoryBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2024 O:mind - AI Learning Platform</p>
+        </footer>
+    </div>
+
+    <script src="frontend/public/script-new.js"></script>
+</body>
+</html>
