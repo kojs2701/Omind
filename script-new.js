@@ -2,7 +2,6 @@
 // Firebase & Gemini Configuration
 // ============================================================
 
-const GEMINI_API_KEY = 'AIzaSyBS5btWNOmBc6G_p020gEk7OszU6HJ8sr0';
 const firebaseConfig = {
     apiKey: "AIzaSyBHLhCs5GGmcGAPfuKuc_deEnBOdk1azmw",
     authDomain: "omind-49f39.firebaseapp.com",
@@ -706,15 +705,14 @@ async function callGeminiAPI(prompt, imageDataUrl = null) {
             });
         }
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
+        const response = await fetch('/api/gemini-generate', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                contents: [{
-                    parts
-                }]
+                prompt,
+                imageDataUrl
             })
         });
 
@@ -725,7 +723,7 @@ async function callGeminiAPI(prompt, imageDataUrl = null) {
         }
 
         const data = await response.json();
-        return data.candidates[0].content.parts[0].text;
+        return data.text || '';
         } catch (error) {
             lastError = error;
             const isRateLimit = error.status === 429 || String(error.message).includes('429');

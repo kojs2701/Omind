@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node backend/server.js",
     "dev": "nodemon backend/server.js",
-    "open": "start http://localhost:3000"
+    "open": "start http://127.0.0.1:5500"
   },
   "keywords": [
     "AI",
